@@ -1,6 +1,6 @@
 # Prompt Studio — project notes
 
-Version: 1.4.0. Read this file before editing or adding features. If `LOCAL_NOTES.md` is present, read it for private deployment history and machine-specific decisions. Keep that file, runtime state, credentials, personal launchers, and deployment receipts out of the public repository.
+Version: 1.5.0. Read this file before editing or adding features. If `LOCAL_NOTES.md` is present, read it for private deployment history and machine-specific decisions. Keep that file, runtime state, credentials, personal launchers, and deployment receipts out of the public repository.
 
 ## Purpose
 
@@ -16,6 +16,7 @@ Node.js 22+ runs the server and CLI with no npm dependencies. `npm start` serves
 | `provider.mjs` | Ollama and optional OpenRouter adapters, request bounds, schema-constrained replies, and serialization. |
 | `settings.mjs` | Atomic provider/address/model persistence and connection fingerprints. |
 | `prompting.mjs` | H3 normalization, compact mode-specific instructions, keyframe alignment, and structural checks. |
+| `expansion.mjs` | Focused six-aspect Fluff up planning schema, bounded parsing, and original-brief precedence for final formatting. |
 | `storyboard.mjs` | Director frame planning, instructions/schema, script serialization, timing report, and per-chunk checks. |
 | `assets.mjs` | Shared browser/server numbering, validation, and serialization; served as `/assets.mjs`. |
 | `voices.mjs` | Shared 30-preset catalog, bounded character choices, conservative narrative insertion, voice placement and speaker-ID checks; served as `/voices.mjs`. |
@@ -45,6 +46,14 @@ Node.js 22+ runs the server and CLI with no npm dependencies. `npm start` serves
 - Render audio starter descriptions directly from detected speech and duration. A second LLM summary can mistake spoken narration for observed action. State that timbre, music, and nonverbal sounds were not analyzed. Delete transcription temporary files on success and failure.
 - No prompt/card/media history or credentials belong in browser local storage. Late AI descriptions must not overwrite edits; offer explicit replacement. Failed requests preserve drafts, cards, and previous output.
 - Preview and sampling require CSP image/media `blob:` allowances; keep script and connection origins restricted. Native confirmations can stall embedded browsers: use inline controls. Output edits and relevant control changes invalidate prior validation.
+
+## Descriptive expansion decisions (1.5.0)
+
+- `creativity: "fluff"` is an explicit option alongside faithful/enrich; faithful stays the default. The selector is visible below the brief. Selecting it does not request inference. It expands presentation details while preserving the core idea and every supplied constraint, not the plot or duration. Do not treat the word fluff as a visual style.
+- Merely adding expansion rules to the long H3 system prompt produced a 67-word summary and even 'visual style is fluff' with MiniCPM. A short plain-prose prepass still tended to under-expand. The focused six-aspect JSON prepass works better, followed by regular H3 formatting with compatible expanded detail as prompt and the unchanged originalBrief taking precedence. Original normalized input remains the validation source. Never silently change providers or fake expansion with generic padding.
+- Both passes use the chosen provider. The UI/docs disclose two passes and extra usage. Parse expansion strictly before formatting: six nonempty strings, maximum2,500 characters each and12,000 combined, no truncation. Failed/length-limited/invalid expansion never starts formatting or retries; failed formatting preserves the previous UI result. All calls share the original five-minute budget; the browser allows 310 seconds for Fluff up with either provider. Sum available usage across expansion, formatting and completed correction, including a discarded correction; unknown totals remain unknown. Aggregate paid costs too, without retaining a misleading per-call cost breakdown.
+- Targets are flexible: roughly180–300 narrative words for a short clip,100–180 per storyboard chunk. A description under100 words is a review warning, not an error that causes more automatic inference. Formatting/correction must retain useful expansion rather than collapse it into a summary. Explicit references, quotes, selected voices, silence, exact times and ending always override embellishment.
+- A storyboard prepass receives the actual whole delivered duration, not one chunk's sampled duration. It keeps events global; the final Director formatting pass distributes them and converts to local times. Shared continuity stays brief persistent facts. Continue treating MiniCPM's structural failures as manual-review issues, not a successful whole-workflow result.
 
 ## Character voice decisions (1.4.0)
 

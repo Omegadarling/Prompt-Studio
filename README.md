@@ -1,4 +1,4 @@
-# Prompt Studio — 1.4.0
+# Prompt Studio — 1.5.0
 
 Turn a video brief into an editable MiniMax H3 prompt, or a script for ComfyUI's H3 Storyboard Director. Prompt Studio follows MiniMax's official writing guides and checks the resulting structure. It formats prompts; it does not generate video or run ComfyUI.
 
@@ -40,6 +40,14 @@ Open **AI connection** and choose your provider:
 **Cued timing** adds estimated event-time cues inside a shot while retaining requested timing. **Natural timing** avoids adding estimated cues to ordinary H3 prompts; supplied timing still matters. A time cue is not a camera cut. Review and edit estimates—text cues do not guarantee that a generated video performs an action at an exact frame.
 
 Use **Exact text** for dialogue or on-screen wording that must appear verbatim, one item per line. Rewrite instructions protect supplied dialogue; this field also enables explicit presence checks. Those checks cannot establish correct speaker ownership or full creative fidelity.
+
+### Fluff up a simple idea
+
+Choose **Fluff up · lots of descriptive detail** in **Creative freedom**, directly below the brief, then format as usual. This expands a simple idea with concrete composition, lighting, color, texture, atmosphere, movement detail and camera wording while keeping its central idea and explicit constraints. Existing dialogue, reference facts, subject count, action order, timing, camera restrictions and ending take priority. It does not authorize new plot events, characters, dialogue, cuts or music.
+
+Fluff up uses **two AI passes with the selected provider**: a focused descriptive expansion, followed by H3 formatting. It may take longer and uses more tokens than Faithful or Enrich the visual detail. With OpenRouter, both passes incur normal provider charges. Changing the option itself makes no request. The original brief stays unchanged in the input and remains authoritative during formatting and validation; failed expansion or formatting preserves the previous output.
+
+A short idea targets roughly 180–300 words of main scene description, or 100–180 words per storyboard chunk, when useful detail and constraints allow it. These are guidance, not enforced lengths: review the result for adequate expansion and creative fit. The app flags very short results. Faithful remains the default; Enrich the visual detail remains the more restrained option. Existing format checks and the optional one-time Ollama correction still apply, with the original five-minute local deadline shared across all passes.
 
 ### Character voices
 
@@ -156,6 +164,8 @@ Or use a JSON job to choose settings:
 ```
 
 Run `node cli.mjs job.json prompt-output.txt`. Set `"timing": "natural"` to avoid added estimated cues for ordinary H3 output.
+
+Set `"creativity": "fluff"` for the two-pass descriptive expansion in either ordinary H3 or storyboard jobs. The other choices are `"faithful"` (default) and `"enrich"`.
 
 For named voices, add a `characterVoices` array to either kind of JSON job:
 

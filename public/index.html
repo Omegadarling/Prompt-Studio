@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#171918">
-  <title>Prompt Studio · 1.4.0</title>
+  <title>Prompt Studio · 1.5.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%23e9b96e'/%3E%3Ctext x='24' y='31' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='23' fill='%23171918'%3EPS%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" type="module"></script>
@@ -15,7 +15,7 @@
   <div class="app-shell">
     <header class="masthead">
       <a class="brand" href="/" aria-label="Prompt Studio home"><span class="brand-mark" aria-hidden="true">PS<span></span></span><span>Prompt Studio</span></a>
-      <div class="version"><span id="hosting-label">PROMPT WORKSPACE</span> <span class="dot" aria-hidden="true"></span> <span id="version">v1.4.0</span></div>
+      <div class="version"><span id="hosting-label">PROMPT WORKSPACE</span> <span class="dot" aria-hidden="true"></span> <span id="version">v1.5.0</span></div>
     </header>
 
     <main>
@@ -72,6 +72,12 @@
                 <input type="file" id="file-input" accept=".txt,.md,text/plain,text/markdown" hidden tabindex="-1">
               </div>
 
+              <div class="field creativity-field">
+                <label for="creativity">Creative freedom</label>
+                <select id="creativity" name="creativity" aria-describedby="creativity-help"><option value="faithful">Stay faithful to my idea</option><option value="enrich">Enrich the visual detail</option><option value="fluff">Fluff up · lots of descriptive detail</option></select>
+                <p class="field-help" id="creativity-help">Fluff up expands your idea first, then formats it for H3. It uses two AI passes when you format, adding rich visual detail, atmosphere, and camera wording while keeping your idea and fixed constraints, without adding plot, characters, or dialogue.</p>
+              </div>
+
               <section class="field character-voices" aria-labelledby="voice-heading">
                 <div class="field-label-row"><h3 class="asset-section-title" id="voice-heading">Character voices <span class="optional">optional</span></h3><span class="count" id="voice-count">0 characters</span></div>
                 <p class="field-help" id="voice-help">Use the character's name from your brief. Choose a speaking voice, then adjust its description. This shapes existing dialogue; it does not add dialogue or generate a voice preview.</p>
@@ -97,7 +103,7 @@
                 <textarea id="reference-notes" name="referenceNotes" hidden tabindex="-1" aria-hidden="true"></textarea>
               </section>
 
-              <details class="more-options" id="more-options"><summary><span>Fine-tune the rewrite</span><span class="summary-note">Style, sound & exact text</span></summary><div class="options-body"><div class="field"><label for="creativity">Creative freedom</label><select id="creativity" name="creativity"><option value="faithful">Stay faithful to my idea</option><option value="enrich">Enrich the visual detail</option></select><p class="field-help">Keep your intent, or allow supporting detail. Explicit constraints stay in place.</p></div><div class="settings-row audio-row"><div class="field"><label for="audio">Scene sound</label><select id="audio" name="audio"><option value="natural">Follow my brief</option><option value="silent">Silent</option></select></div><div class="field"><label for="music">Background music</label><select id="music" name="music"><option value="auto">Follow my brief</option><option value="none">No music</option></select></div></div><div class="field"><label for="exact-text">Text to preserve exactly <span class="optional">optional</span></label><textarea id="exact-text" name="exactText" rows="3" maxlength="6000" placeholder="One spoken line or on-screen text item per line." aria-describedby="exact-text-help"></textarea><p class="field-help" id="exact-text-help">Add the same wording to your brief with its speaker or placement. The checker will flag any of these lines missing from the result.</p></div></div></details>
+              <details class="more-options" id="more-options"><summary><span>Fine-tune the rewrite</span><span class="summary-note">Sound & exact text</span></summary><div class="options-body"><div class="settings-row audio-row"><div class="field"><label for="audio">Scene sound</label><select id="audio" name="audio"><option value="natural">Follow my brief</option><option value="silent">Silent</option></select></div><div class="field"><label for="music">Background music</label><select id="music" name="music"><option value="auto">Follow my brief</option><option value="none">No music</option></select></div></div><div class="field"><label for="exact-text">Text to preserve exactly <span class="optional">optional</span></label><textarea id="exact-text" name="exactText" rows="3" maxlength="6000" placeholder="One spoken line or on-screen text item per line." aria-describedby="exact-text-help"></textarea><p class="field-help" id="exact-text-help">Add the same wording to your brief with its speaker or placement. The checker will flag any of these lines missing from the result.</p></div></div></details>
             </fieldset>
             <div class="submit-row"><button class="primary-button" id="generate-button" type="submit" disabled><span id="generate-label">Format for H3</span><svg id="generate-arrow" aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M4 10h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="spinner" id="generate-spinner" hidden aria-hidden="true"></span></button><span class="shortcut">Ctrl + Enter</span></div>
           </form>

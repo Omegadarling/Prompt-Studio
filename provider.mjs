@@ -6,6 +6,7 @@ import { isIP } from 'node:net';
 import { request as httpRequest } from 'node:http';
 import { request as httpsRequest } from 'node:https';
 import { storyboardTransport, serializeStoryboardReply } from './storyboard.mjs';
+import { EXPANSION_SCHEMA } from './expansion.mjs';
 
 export const DEFAULT_MODEL = 'google/gemini-2.5-flash';
 export const DEFAULT_OLLAMA_MODEL = 'qwen3.5:latest';
@@ -33,6 +34,16 @@ for (const field of ['integrated_multimodal_description', 'detailed_description'
 SECTION_DESCRIPTIONS.subject_definitions += ' Keep a selected character name and voice description with its matching Subject, without inventing an extra reference asset for a voice preset.';
 
 function structuredRequest(messages, context) {
+  if (context?.task === 'expand') return { messages, fields: null, format: EXPANSION_SCHEMA };
+  const descriptions = { ...SECTION_DESCRIPTIONS };
+  if (context?.creativity === 'fluff') {
+    for (const field of ['integrated_multimodal_description', 'detailed_description']) {
+      descriptions[field] = descriptions[field].replace(' Aim for 350–500 words when the brief supports that detail without inventions.', '');
+      descriptions[field] += context.outputFormat === 'storyboard'
+        ? ' FLUFF UP: develop this chunk into roughly 100–180 words of concrete visual and motion detail when constraints allow, keeping the same action, reference identity, local timing and outcome. Expand each chunk individually without replaying earlier events or padding shared continuity.'
+        : ' FLUFF UP: expand a simple idea substantially, aiming for roughly 180–300 words of rich composition, lighting, texture, atmosphere and existing-action detail when constraints allow. Preserve the core idea and every fixed fact, exact line, reference role, duration and camera restriction. Do not invent new characters, plot events, dialogue, cuts or music. Add useful descriptive substance, not repetition.';
+    }
+  }
   if (context?.outputFormat === 'storyboard') {
     const count = context.chunkCount;
     if (!Number.isInteger(count) || count < 1 || count > 8) throw new Error('Choose 1 through 8 storyboard chunks.');
@@ -41,12 +52,12 @@ function structuredRequest(messages, context) {
     const systemIndex = prepared.findLastIndex(m => m.role === 'system');
     if (systemIndex < 0) prepared.unshift({ role: 'system', content: instruction });
     else prepared[systemIndex].content += `\n\n${instruction}`;
-    return { messages: prepared, fields: { storyboardCount: count }, format: storyboardTransport(count, SECTION_DESCRIPTIONS, context.storyboard) };
+    return { messages: prepared, fields: { storyboardCount: count }, format: storyboardTransport(count, descriptions, context.storyboard) };
   }
   if (context?.mode === undefined) return { messages, fields: null, format: null };
   if (!['t2v', 'i2v', 'fl2v', 'l2v', 'reference'].includes(context.mode)) throw new Error('Choose a valid H3 mode before requesting a structured rewrite.');
   const fields = context.mode === 'reference' ? REFERENCE_SECTIONS : BASE_SECTIONS;
-  const properties = Object.fromEntries(fields.map((field) => [field, { type: 'string', minLength: 1, description: SECTION_DESCRIPTIONS[field] }]));
+  const properties = Object.fromEntries(fields.map((field) => [field, { type: 'string', minLength: 1, description: descriptions[field] }]));
   const format = { type: 'object', properties, required: [...fields], additionalProperties: false };
   const instruction = `APPLICATION TRANSPORT OVERRIDE — selected H3 mode: ${context.mode}.
 The earlier plain-text-only rule describes the FINAL prompt shown to the user. For this Ollama response only, return ONE JSON object matching the supplied schema; the application will serialize your string values into that final plain-text prompt. This changes only the transport wrapper, not any semantic, preservation, or guide requirement.
@@ -55,7 +66,7 @@ ${context.mode === 'reference'
     ? 'THIS IS FULL-REFERENCE MODE, NOT FL2VA. The presence of Picture 1 and Picture 2 does NOT mean opening and ending frames. Their slot numbers do not assign any temporal role. Use only the roles explicitly provided in referenceNotes: an identity reference supplies identity; an environment reference supplies environment. Define separate Subjects for separately tracked content and cite the supplied sources in those definitions. Do not force a transition from the first reference picture to the second. Use keyframe completion only if a concrete frame anchor was explicitly requested. Fill all SIX distinct sections; do not place a three-field base prompt inside them. detailed_description must establish visual style in sentences BEFORE [Shot 1].'
     : `Use the THREE base sections for ${context.mode}. integrated_multimodal_description starts with [Shot 1], then visual style and composition. Preserve the selected mode's actual first/last-frame roles, if any; only the external alignment sentence is omitted from this JSON response.`}
 Field content requirements:
-${fields.map((field) => `${field}: ${SECTION_DESCRIPTIONS[field]}`).join('\n')}
+${fields.map((field) => `${field}: ${descriptions[field]}`).join('\n')}
 Follow the user's creative brief and exact constraints while obeying this transport override.`;
   const prepared = messages.map((message) => ({ ...message }));
   const systemIndex = prepared.findLastIndex((message) => message.role === 'system');

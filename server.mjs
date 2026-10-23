@@ -6,11 +6,12 @@ import { createProvider } from './provider.mjs';
 import { createProviderManager, connectionFingerprint } from './settings.mjs';
 import { normalizeInput, buildMessages, finalizeOutput, validateOutput } from './prompting.mjs';
 import { describeMediaAsset, suggestAssetsFromBrief } from './asset-drafting.mjs';
-import { normalizeJob, buildStoryboardMessages, validateStoryboard, storyboardReport } from './storyboard.mjs';
+import { normalizeJob, buildStoryboardMessages, validateStoryboard, storyboardReport, storyboardPlan } from './storyboard.mjs';
 import { applyVoiceDirections } from './voices.mjs';
+import { buildExpansionMessages, parseExpansion, useExpansion } from './expansion.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-export const VERSION = '1.4.0';
+export const VERSION = '1.5.0';
 export const APP_ID = 'minimax-h3-prompt-studio';
 const SOURCES = [
   { label: 'Base & keyframe guide', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md' },
@@ -20,38 +21,55 @@ const SOURCES = [
 export async function rewrite(raw, provider = createProvider()) {
   const input = normalizeJob(raw);
   const storyboard = input.outputFormat === 'storyboard';
-  const messages = storyboard ? buildStoryboardMessages(input) : buildMessages(input);
-  const context = { mode: input.mode, ...(storyboard ? { outputFormat: 'storyboard', chunkCount: input.storyboard.chunkCount, storyboard: input.storyboard } : {}) };
+  let messages = storyboard ? buildStoryboardMessages(input) : buildMessages(input);
+  const context = { mode: input.mode, creativity: input.creativity, ...(storyboard ? { outputFormat: 'storyboard', chunkCount: input.storyboard.chunkCount, storyboard: input.storyboard } : {}) };
   const finalize = text => applyVoiceDirections(storyboard ? text.trim() : finalizeOutput(text, input), input);
   const validate = text => storyboard ? validateStoryboard(text, input) : validateOutput(text, input);
   const extra = storyboard ? { storyboardReport: storyboardReport(input) } : {};
   const deadline = Date.now() + 300000;
-  const result = await provider.complete(messages, { ...context, timeoutMs: 300000 });
+  let expansionUsage = null;
+  if (input.creativity === 'fluff') {
+    const expansionInput = storyboard ? { ...input, duration: storyboardPlan(input.storyboard).duration, durationScope: 'whole finished story; keep supplied event times global' } : input;
+    const expanded = await provider.complete(buildExpansionMessages(expansionInput), { task: 'expand', timeoutMs: Math.max(1, deadline - Date.now()) });
+    messages = useExpansion(messages, parseExpansion(expanded.text), input.prompt);
+    expansionUsage = expanded.usage;
+  }
+  const remainingForFormat = deadline - Date.now();
+  if (remainingForFormat < 1000) throw new Error('The rewrite time budget ended after expansion. Your brief and previous result are unchanged. No formatting request was sent.');
+  const result = await provider.complete(messages, { ...context, timeoutMs: remainingForFormat });
+  if (input.creativity === 'fluff') result.usage = mergeUsage(expansionUsage, result.usage);
   const text = finalize(result.text);
   const first = { ...result, ...extra, text, validation: validate(text) };
   // A complete local draft may need one format correction. Never retry a failed
   // generation, change providers, or consume paid cloud usage automatically.
   if (result.provider !== 'Ollama' || !first.validation.errors.length) return first;
   const remaining = deadline - Date.now();
-  const keepDraft = (reason) => ({ ...first, repair: { attempted: reason !== 'time_budget', applied: false, reason },
+  const keepDraft = (reason, usage = first.usage) => ({ ...first, usage, repair: { attempted: reason !== 'time_budget', applied: false, reason },
     validation: { ...first.validation, warnings: [...first.validation.warnings,
       'The completed draft is shown with its format issues. Automatic correction could not improve it; review the issues below before using it.'] } });
   if (remaining < 1000) return keepDraft('time_budget');
-  const correction = { role: 'user', content: `Correct the H3 format issues in the preceding draft using the ORIGINAL brief and settings above. Preserve every original creative constraint, exact dialogue, screen text, asset role, and ending. Remove unsupported additions; do not invent details to make the prompt longer. Return the entire corrected prompt using the same selected mode and structured response format. Check all original constraints again, not only this list. Format issues:\n${first.validation.errors.map((error) => `- ${error}`).join('\n')}` };
+  const correction = { role: 'user', content: `Correct the H3 format issues in the preceding draft using the ORIGINAL brief and settings above. Preserve every original creative constraint, exact dialogue, screen text, asset role, and ending. ${input.creativity === 'fluff' ? 'Keep the requested substantial descriptive expansion and compatible presentation details, while removing additions that contradict the brief or introduce new story events. Do not shorten the scene to a bare summary merely to fix formatting.' : 'Remove unsupported additions; do not invent details to make the prompt longer.'} Return the entire corrected prompt using the same selected mode and structured response format. Check all original constraints again, not only this list. Format issues:\n${first.validation.errors.map((error) => `- ${error}`).join('\n')}` };
   try {
     const corrected = await provider.complete([...messages, { role: 'assistant', content: text }, correction], { ...context, timeoutMs: remaining });
     const correctedText = finalize(corrected.text);
     const validation = validate(correctedText);
-    if (validation.errors.length >= first.validation.errors.length || validation.errors.some(error => !first.validation.errors.includes(error))) return keepDraft('not_improved');
-    const usage = corrected.usage && result.usage ? {
-      ...corrected.usage,
-      ...Object.fromEntries(['prompt_tokens', 'completion_tokens', 'total_tokens', 'total_duration_ns', 'load_duration_ns'].map((key) => [key,
-        Number.isFinite(result.usage[key]) && Number.isFinite(corrected.usage[key]) ? result.usage[key] + corrected.usage[key] : null])),
-    } : corrected.usage;
+    const usage = mergeUsage(result.usage, corrected.usage);
+    if (validation.errors.length >= first.validation.errors.length || validation.errors.some(error => !first.validation.errors.includes(error))) return keepDraft('not_improved', usage);
     return { ...corrected, ...extra, text: correctedText, usage, validation, repair: { attempted: true, applied: true } };
   } catch {
-    return keepDraft('correction_failed');
+    return keepDraft('correction_failed', null);
   }
+}
+
+function mergeUsage(first, second) {
+  if (!first || !second) return null;
+  const keys = ['prompt_tokens', 'completion_tokens', 'total_tokens', 'total_duration_ns', 'load_duration_ns'];
+  if (Object.hasOwn(first, 'cost') || Object.hasOwn(second, 'cost')) keys.push('cost');
+  return { ...second, ...Object.fromEntries(keys.map(key => [key,
+    Number.isFinite(first[key]) && Number.isFinite(second[key]) ? first[key] + second[key] : null])),
+    // Per-request breakdowns cannot describe the aggregate of multiple calls.
+    ...(Object.hasOwn(first, 'cost_details') || Object.hasOwn(second, 'cost_details') ? { cost_details: null } : {}),
+  };
 }
 
 async function readJson(request, limit = 160000) {

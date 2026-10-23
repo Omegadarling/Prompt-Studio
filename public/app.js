@@ -1102,12 +1102,15 @@ async function generate(event) {
   updateActions();
   const usesOllama = savedConnection?.kind === 'ollama';
   const submitted = getInput();
+  const usesExpansion = submitted.creativity === 'fluff';
   let refreshConnection = false;
-  announce(usesOllama ? 'Shaping your prompt with Ollama. Loading the model and rewriting can take up to five minutes.' : 'Shaping your prompt. This can take up to two minutes.');
+  announce(usesExpansion
+    ? 'Expanding your idea, then formatting it for H3. Both AI passes can take up to five minutes.'
+    : usesOllama ? 'Shaping your prompt with Ollama. Loading the model and rewriting can take up to five minutes.' : 'Shaping your prompt. This can take up to two minutes.');
   try {
     const result = await requestJson('/api/rewrite', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ...submitted, connectionFingerprint: savedConnectionFingerprint }),
-    }, usesOllama ? 310000 : 130000);
+    }, usesOllama || usesExpansion ? 310000 : 130000);
     if (typeof result.text !== 'string' || !result.text.trim()) throw new Error('No prompt was returned. Your previous result is unchanged.');
     els.output.value = result.text;
     resultOutputFormat = submitted.outputFormat;

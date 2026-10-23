@@ -9,7 +9,7 @@ const source = (await readFile(new URL('../public/app.js', import.meta.url), 'ut
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 
 // Execute shipped event handlers against a small DOM with deferred synthetic API responses.
-async function createUI() {
+async function createUI(providerKind = 'ollama') {
   const element = (tagName = '') => ({
     tagName, value: '', textContent: '', hidden: false, disabled: false, dataset: {}, children: [],
     listeners: {}, attributes: {}, classList: { add() {}, remove() {} },
@@ -23,6 +23,7 @@ async function createUI() {
   for (const [id, value] of Object.entries({ 'output-format': 'h3', timing: 'cued', 'seconds-per-chunk': '10', 'chunk-count': '4', mode: 't2v', duration: '5', creativity: 'faithful', audio: 'natural', music: 'auto', 'connection-kind': 'ollama', 'asset-new-type': 'picture' })) get(id).value = value;
   for (const id of ['example-confirmation', 'asset-review', 'storyboard-report-section']) get(id).hidden = true;
   const requests = [];
+  const timeouts = [];
   let copied = '';
   const response = (data, ok = true) => ({ ok, status: ok ? 200 : 502, json: async () => data });
   const context = createContext({
@@ -30,16 +31,16 @@ async function createUI() {
     window: {}, navigator: { clipboard: { writeText: async (text) => { copied = text; } } }, URL, Blob, AbortController, clearTimeout,
     numberAssets, serializeAssets, MAX_ASSETS, MAX_ASSET_DESCRIPTION_LENGTH, MAX_REFERENCE_NOTES_LENGTH,
     VOICE_PRESETS, VOICE_GROUPS, MAX_CHARACTER_VOICES, MAX_VOICE_DESCRIPTION_LENGTH, MAX_CHARACTER_NAME_LENGTH,
-    setTimeout(fn, ms) { const timer = setTimeout(fn, ms); timer.unref(); return timer; },
+    setTimeout(fn, ms) { timeouts.push(ms); const timer = setTimeout(fn, ms); timer.unref(); return timer; },
     fetch: async (path, options) => {
-      if (path === '/api/status?refresh=1') return response({ version: '1.3.0', connectionFingerprint: 'fixture', hosting: { label: 'test' }, settings: { kind: 'ollama', baseUrl: 'http://127.0.0.1:11434', model: 'fixture' }, provider: { available: true, model: 'fixture' } });
+      if (path === '/api/status?refresh=1') return response({ version: '1.5.0', connectionFingerprint: 'fixture', hosting: { label: 'test' }, settings: { kind: providerKind, baseUrl: 'http://127.0.0.1:11434', model: 'fixture' }, provider: { available: true, model: 'fixture' } });
       return new Promise((resolve) => requests.push({ path, input: JSON.parse(options.body), resolve }));
     },
   });
   runInContext(source, context);
   await new Promise(setImmediate);
   return {
-    get, requests, copied: () => copied,
+    get, requests, timeouts, copied: () => copied,
     set(id, value, event = 'change') { get(id).value = value; get(id).listeners[event](); },
     click: (id) => get(id).listeners.click(),
     generate: () => get('rewrite-form').listeners.submit({ preventDefault() {} }),
@@ -58,6 +59,100 @@ function addPicture(ui, description = 'A red robot on a neutral background.') {
 
 const valid = { errors: [], warnings: [] };
 const script = '[shared]\nA red robot.\n\n[chunk 1]\nThe robot waves.';
+
+test('Fluff up is discoverable beside the brief while faithful remains the default', async () => {
+  const ui = await createUI();
+  const select = html.match(/<select id="creativity"[^>]*>([\s\S]*?)<\/select>/)?.[1];
+  assert.ok(select);
+  assert.deepEqual([...select.matchAll(/<option value="([^"]+)"/g)].map(m => m[1]), ['faithful', 'enrich', 'fluff']);
+  assert.equal(ui.get('creativity').value, 'faithful');
+  assert.ok(html.indexOf('id="creativity"') < html.indexOf('id="more-options"'), 'Creative freedom is outside the collapsed options');
+  assert.match(html, /aria-describedby="creativity-help"/);
+  assert.match(html, /expands your idea first, then formats it for H3/);
+  assert.match(html, /two AI passes when you format/);
+  assert.match(html, /without adding plot, characters, or dialogue/);
+  assert.equal(ui.requests.length, 0);
+});
+
+test('Fluff up travels through every H3 mode and storyboard using the normal rewrite request', async () => {
+  for (const mode of ['t2v', 'i2v', 'fl2v', 'l2v', 'reference', 'storyboard']) {
+    const ui = await createUI();
+    ui.get('prompt').value = 'A red robot waves.';
+    if (mode === 'storyboard') ui.set('output-format', 'storyboard');
+    else ui.set('mode', mode);
+    if (mode !== 't2v') addPicture(ui);
+    if (mode === 'fl2v') addPicture(ui, 'The same red robot with its hand lowered.');
+    ui.set('creativity', 'fluff', 'input');
+    assert.equal(ui.requests.length, 0, 'Selecting Fluff up never starts a request');
+    const pending = ui.generate();
+    assert.equal(ui.requests.length, 1);
+    assert.equal(ui.requests[0].path, '/api/rewrite');
+    assert.equal(ui.requests[0].input.creativity, 'fluff', mode);
+    assert.equal(ui.requests[0].input.mode, mode === 'storyboard' ? 'reference' : mode);
+    assert.equal(ui.requests[0].input.outputFormat, mode === 'storyboard' ? 'storyboard' : 'h3');
+    assert.equal(ui.get('input-fields').disabled, true);
+    ui.finish(0, { text: mode === 'storyboard' ? script : 'Expanded prompt.', validation: valid });
+    await pending;
+  }
+});
+
+test('Fluff up allows both AI passes to finish for either provider without changing ordinary timeouts', async () => {
+  for (const [providerKind, creativity, timeout, wording] of [
+    ['openrouter', 'fluff', 310000, /Both AI passes can take up to five minutes/],
+    ['ollama', 'fluff', 310000, /Both AI passes can take up to five minutes/],
+    ['openrouter', 'faithful', 130000, /up to two minutes/],
+    ['openrouter', 'enrich', 130000, /up to two minutes/],
+    ['ollama', 'faithful', 310000, /up to five minutes/],
+  ]) {
+    const ui = await createUI(providerKind);
+    ui.get('prompt').value = 'A red robot waves.';
+    ui.set('creativity', creativity, 'input');
+    const pending = ui.generate();
+    assert.equal(ui.requests.length, 1);
+    assert.equal(ui.timeouts.at(-1), timeout, `${providerKind}/${creativity}`);
+    assert.match(ui.get('feedback').textContent, wording);
+    ui.finish(0, { text: 'Completed prompt.', validation: valid }); await pending;
+    assert.equal(ui.get('output').value, 'Completed prompt.');
+  }
+});
+
+test('detail choices preserve drafts across formats and failures, and invalidate pending checks', async () => {
+  const ui = await createUI();
+  ui.set('mode', 'i2v');
+  ui.get('prompt').value = 'Mira waves beside a red robot.';
+  ui.get('exact-text').value = 'Ready.';
+  ui.get('output').value = 'Earlier result';
+  const assetId = addPicture(ui);
+  ui.click('voice-add');
+  const voice = ui.get('voice-list').children[0];
+  const voiceNodes = nodes(voice);
+  const name = voiceNodes.find(node => node.tagName === 'input');
+  name.value = 'Mira'; name.listeners.input();
+  const preset = voiceNodes.find(node => node.tagName === 'select');
+  preset.value = VOICE_PRESETS[0].id; preset.listeners.change();
+  const description = voiceNodes.find(node => node.tagName === 'textarea');
+  description.value = 'An edited warm speaking voice.'; description.listeners.input();
+  const checking = ui.click('validate-button');
+  ui.set('creativity', 'fluff', 'input');
+  ui.finish(0, valid); await checking;
+  assert.equal(ui.get('validation-title').textContent, 'Changes need a check');
+  ui.set('output-format', 'storyboard');
+  ui.set('output-format', 'h3');
+  assert.equal(ui.get('mode').value, 'i2v');
+  assert.equal(ui.get('creativity').value, 'fluff');
+  for (const choice of ['enrich', 'faithful', 'fluff']) ui.set('creativity', choice, 'input');
+  assert.equal(ui.requests.length, 1);
+  const generating = ui.generate();
+  assert.equal(ui.requests[1].input.characterVoices[0].description, 'An edited warm speaking voice.');
+  ui.finish(1, { error: 'Synthetic unavailable model.' }, false); await generating;
+  assert.equal(ui.get('creativity').value, 'fluff');
+  assert.equal(ui.get('prompt').value, 'Mira waves beside a red robot.');
+  assert.equal(ui.get('exact-text').value, 'Ready.');
+  assert.equal(ui.get('output').value, 'Earlier result');
+  assert.equal(ui.get('asset-list').children[0].dataset.assetId, assetId);
+  assert.equal(ui.get('voice-list').children[0].dataset.voiceId, voice.dataset.voiceId);
+  assert.equal(description.value, 'An edited warm speaking voice.');
+});
 
 test('format switches preserve all drafts and restore the previous H3 mode without requests', async () => {
   const ui = await createUI();
