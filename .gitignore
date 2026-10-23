@@ -1,0 +1,23 @@
+.runtime/
+node_modules/
+.env
+*.log
+.gitnexus/
+.codegraph/
+validation/
+deploy/
+LOCAL_NOTES.md
+PUBLIC_PROJECT_NOTES.md
+Open Hosted Studio.ps1
+Open H3 Prompt Studio.url
+Open Prompt Studio.url
+Start Prompt Studio.cmd
+guides/*.md
+*.env
+settings.json
+*.pem
+*.key
+*.pfx
+*.p12
+.DS_Store
+Thumbs.db

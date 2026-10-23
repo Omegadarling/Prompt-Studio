@@ -1,0 +1,17 @@
+{
+  "retrieved": "2026-10-22",
+  "guides": [
+    {
+      "file": "guides/VIDEO_PROMPT_WRITING_GUIDE_base_en.md",
+      "source": "https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/42ed227ee7df40d41602854ae760620d6eb651fe/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md",
+      "sha256": "2cfebc096a6e08370f288d468d90b60f7f9bcb938f94bf090816e910e48e75fc"
+    },
+    {
+      "file": "guides/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md",
+      "source": "https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/42ed227ee7df40d41602854ae760620d6eb651fe/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md",
+      "sha256": "1e574f356716ad55612247ffb7bbccbcdb484ad96599d63c7dca1af186b1fab7"
+    }
+  ],
+  "revision": "42ed227ee7df40d41602854ae760620d6eb651fe",
+  "repository": "MiniMaxAI/MiniMax-H3"
+}

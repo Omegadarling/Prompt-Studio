@@ -1,0 +1,9 @@
+{
+  "name": "prompt-studio",
+  "version": "1.3.0",
+  "private": true,
+  "type": "module",
+  "description": "Local guide-grounded MiniMax H3 prompt rewriting app",
+  "engines": { "node": ">=22" },
+  "scripts": { "start": "node server.mjs", "test": "node --test" }
+}

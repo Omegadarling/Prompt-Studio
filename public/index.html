@@ -1,0 +1,116 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <meta name="theme-color" content="#171918">
+  <title>Prompt Studio · 1.3.0</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%23e9b96e'/%3E%3Ctext x='24' y='31' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='23' fill='%23171918'%3EPS%3C/text%3E%3C/svg%3E">
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" type="module"></script>
+</head>
+<body>
+  <a class="skip-link" href="#prompt">Skip to your prompt</a>
+  <div class="app-shell">
+    <header class="masthead">
+      <a class="brand" href="/" aria-label="Prompt Studio home"><span class="brand-mark" aria-hidden="true">PS<span></span></span><span>Prompt Studio</span></a>
+      <div class="version"><span id="hosting-label">PROMPT WORKSPACE</span> <span class="dot" aria-hidden="true"></span> <span id="version">v1.3.0</span></div>
+    </header>
+
+    <main>
+      <section class="intro" aria-labelledby="page-title">
+        <div><p class="eyebrow">YOUR IDEA. READY FOR MINIMAX H3.</p><h1 id="page-title">A little structure.<br><span>A clearer shot.</span></h1><p class="intro-copy">Drop in your video idea. Get an editable prompt shaped<br class="wide-only"> around MiniMax H3’s official writing guides.</p></div>
+        <div class="workflow" aria-label="Workflow: brief, format, create"><span class="workflow-step"><b>01</b> Your brief</span><span class="workflow-line" aria-hidden="true"></span><span class="workflow-step"><b>02</b> H3 prompt</span><span class="workflow-line" aria-hidden="true"></span><span class="workflow-step"><b>03</b> Your next shot</span></div>
+      </section>
+
+      <div class="connection" id="connection" data-state="loading"><span class="connection-dot" aria-hidden="true"></span><p id="connection-message">Checking your AI connection…</p><button type="button" class="text-button" id="connection-retry" hidden>Check again</button></div>
+      <details class="connection-settings" id="connection-settings">
+        <summary><span>AI connection</span><span class="connection-summary" id="connection-summary">Choose an Ollama or OpenRouter model</span></summary>
+        <form id="connection-form">
+          <fieldset id="connection-fields">
+            <legend class="sr-only">AI connection settings</legend>
+            <div class="connection-grid">
+              <div class="field"><label for="connection-kind">AI provider</label><select id="connection-kind" name="kind"><option value="ollama">Ollama · local or shared computer</option><option value="openrouter">OpenRouter · cloud</option></select></div>
+              <div class="field" id="connection-url-field"><label for="connection-url">Ollama address</label><input type="url" id="connection-url" name="baseUrl" value="http://127.0.0.1:11434" placeholder="http://127.0.0.1:11434" autocomplete="off" spellcheck="false" aria-describedby="connection-host-help"></div>
+              <div class="field"><label for="connection-model">Model</label><input type="text" id="connection-model" name="model" value="qwen3.5:latest" list="connection-models" placeholder="qwen3.5:latest" maxlength="200" autocomplete="off" spellcheck="false" required aria-describedby="connection-model-help"><datalist id="connection-models"></datalist></div>
+            </div>
+            <p class="field-help" id="connection-host-help">“localhost” means the computer hosting Prompt Studio, not the device with this browser. Use the other computer’s LAN address for a shared Ollama server.</p>
+            <p class="field-help" id="connection-provider-help">Ollama runs on the computer you choose. No cloud AI service or per-request API charge.</p>
+            <div class="connection-form-bottom"><p class="field-help" id="connection-model-help">Test connection lists installed models without generating anything. Connection settings are saved on the app server.</p><div class="connection-buttons"><button type="button" class="secondary-button" id="connection-test">Test connection</button><button type="submit" class="secondary-button save-connection" id="connection-save">Save connection</button></div></div>
+          </fieldset>
+          <p class="connection-result" id="connection-result" role="status" aria-live="polite" aria-atomic="true"></p>
+        </form>
+      </details>
+
+      <div class="workspace">
+        <section class="panel input-panel" aria-labelledby="brief-heading">
+          <div class="panel-heading"><div><span class="section-number">01 / INPUT</span><h2 id="brief-heading">Your brief</h2></div><button class="text-button" id="example-button" type="button" aria-controls="example-confirmation" aria-expanded="false"><span id="example-label">Try an example</span> <span aria-hidden="true">↗</span></button></div>
+          <div class="example-confirmation" id="example-confirmation" hidden><p>This replaces your brief, reference assets, and exact-text list. Your existing result will be kept.</p><button class="text-button" id="example-cancel" type="button">Cancel</button></div>
+          <form id="rewrite-form">
+            <fieldset id="input-fields">
+              <legend class="sr-only">Video prompt settings</legend>
+              <div class="settings-row format-settings">
+                <div class="field"><label for="output-format">Output format</label><select id="output-format" name="outputFormat"><option value="h3">H3 prompt</option><option value="storyboard">ComfyUI Storyboard Director</option></select></div>
+                <div class="field" id="timing-field"><label for="timing">Event timing</label><select id="timing" name="timing" aria-describedby="timing-help"><option value="cued">Cued · add event times</option><option value="natural">Natural · no added cues</option></select></div>
+              </div>
+              <p class="field-help timing-help" id="timing-help">Estimated event cues are editable. Their timing guides H3; final video adherence is not guaranteed.</p>
+              <div class="storyboard-settings" id="storyboard-settings" hidden>
+                <p class="storyboard-workflow">MiniMax H3 Storyboard Long Reference to Video – Turbo 4-Step v1.0.0</p>
+                <div class="settings-row"><div class="field"><label for="seconds-per-chunk">Seconds per chunk</label><input type="number" id="seconds-per-chunk" name="secondsPerChunk" min="0.1" max="15" step="0.1" value="10" required disabled></div><div class="field"><label for="chunk-count">Chunk count</label><input type="number" id="chunk-count" name="chunkCount" min="1" max="8" step="1" value="4" required disabled></div></div>
+                <p class="field-help">Uses Full reference mode. The generation report gives the exact timeline at 24 fps with 22 overlapping frames between chunks.</p>
+              </div>
+              <div class="settings-row">
+                <div class="field mode-field"><label for="mode">Generation mode</label><select id="mode" name="mode" aria-describedby="mode-help"><option value="t2v">Text to video</option><option value="i2v">First frame</option><option value="fl2v">First + last frame</option><option value="l2v">Last frame</option><option value="reference">Full reference</option></select></div>
+                <div class="field duration-field" id="duration-field"><label for="duration">Duration</label><div class="duration-control"><input id="duration" name="duration" type="number" min="0.01" max="600" step="0.01" value="5" required aria-label="Duration in seconds"><span aria-hidden="true">sec</span></div></div>
+              </div>
+              <p class="field-help mode-help" id="mode-help">Start with words. H3’s base format structures your visuals, action, and sound.</p>
+
+              <div class="field brief-field">
+                <div class="field-label-row"><label for="prompt">What happens in your video?</label><span id="input-count" class="count">0 characters</span></div>
+                <div class="drop-area" id="drop-area"><textarea id="prompt" name="prompt" rows="10" maxlength="16000" required spellcheck="true" placeholder="Describe the subject, action, visual style, and camera move. Include any dialogue or text exactly as you want it to appear." aria-describedby="drop-help"></textarea><div class="drop-footer"><span id="drop-help">Paste a brief or drop a .txt / .md file</span><button type="button" id="import-button" class="text-button">Browse files</button></div><div class="drop-overlay" aria-hidden="true">Drop your prompt here<span>.txt or .md</span></div></div>
+                <input type="file" id="file-input" accept=".txt,.md,text/plain,text/markdown" hidden tabindex="-1">
+              </div>
+
+              <section class="field reference-field" id="reference-field" hidden aria-labelledby="reference-label">
+                <div class="field-label-row"><h3 class="asset-section-title" id="reference-label">Reference assets</h3><span class="count" id="asset-count">0 assets</span></div>
+                <p class="field-help" id="reference-help">Add media to draft descriptions, or guess starter assets from your brief. Every description stays editable.</p>
+                <p class="field-help" id="asset-mode-help"></p>
+                <div class="asset-source-actions"><button type="button" class="secondary-button" id="asset-files-add">Add assets from files</button><button type="button" class="secondary-button" id="asset-suggest">Suggest from brief</button></div>
+                <input type="file" id="asset-files-input" accept="image/png,image/jpeg,image/webp,audio/*,video/*" multiple hidden tabindex="-1">
+                <p class="asset-order-help" id="asset-media-help">Media analysis uses your selected AI connection. Prompt Studio does not save files; add the originals to H3 separately. PNG/JPEG/WebP: up to 10 MiB each. Audio/video: up to 24 MiB and 2 minutes each. Video uses three sampled frames without audio. Audio descriptions use speech transcription; music and sound qualities need your notes.</p>
+                <div class="asset-add-row"><label class="sr-only" for="asset-new-type">New asset type</label><select id="asset-new-type"><option value="picture">Picture</option><option value="audio">Audio</option><option value="video">Video</option></select><button type="button" class="secondary-button" id="asset-add">+ Add asset</button></div>
+                <div class="asset-suggestions" id="asset-suggestions" hidden><h4>Guesses from your brief</h4><p id="asset-suggestions-help"></p><div id="asset-suggestions-list"></div><p id="asset-suggestions-status" role="status"></p><div class="asset-source-actions"><button type="button" class="secondary-button" id="asset-suggestions-apply">Add all suggestions</button><button type="button" class="text-button" id="asset-suggestions-dismiss">Discard suggestions</button></div></div>
+                <div id="asset-list" class="asset-list" role="list" aria-label="Reference assets in upload order"></div>
+                <p class="asset-empty" id="asset-empty">Choose files for media-based descriptions, suggest assets from your brief, or add a blank card.</p>
+                <p class="asset-order-help">Order these cards to match your H3 uploads. Pictures, audio, and videos each have their own numbering.</p>
+                <div class="asset-review" id="asset-review" hidden><p id="asset-review-message"></p><button class="text-button" id="asset-review-confirm" type="button">I reviewed the references</button></div>
+                <p class="asset-notice" id="asset-notice" role="status" aria-live="polite" aria-atomic="true"></p>
+                <textarea id="reference-notes" name="referenceNotes" hidden tabindex="-1" aria-hidden="true"></textarea>
+              </section>
+
+              <details class="more-options" id="more-options"><summary><span>Fine-tune the rewrite</span><span class="summary-note">Style, sound & exact text</span></summary><div class="options-body"><div class="field"><label for="creativity">Creative freedom</label><select id="creativity" name="creativity"><option value="faithful">Stay faithful to my idea</option><option value="enrich">Enrich the visual detail</option></select><p class="field-help">Keep your intent, or allow supporting detail. Explicit constraints stay in place.</p></div><div class="settings-row audio-row"><div class="field"><label for="audio">Scene sound</label><select id="audio" name="audio"><option value="natural">Follow my brief</option><option value="silent">Silent</option></select></div><div class="field"><label for="music">Background music</label><select id="music" name="music"><option value="auto">Follow my brief</option><option value="none">No music</option></select></div></div><div class="field"><label for="exact-text">Text to preserve exactly <span class="optional">optional</span></label><textarea id="exact-text" name="exactText" rows="3" maxlength="6000" placeholder="One spoken line or on-screen text item per line." aria-describedby="exact-text-help"></textarea><p class="field-help" id="exact-text-help">Add the same wording to your brief with its speaker or placement. The checker will flag any of these lines missing from the result.</p></div></div></details>
+            </fieldset>
+            <div class="submit-row"><button class="primary-button" id="generate-button" type="submit" disabled><span id="generate-label">Format for H3</span><svg id="generate-arrow" aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M4 10h12m-5-5 5 5-5 5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="spinner" id="generate-spinner" hidden aria-hidden="true"></span></button><span class="shortcut">Ctrl + Enter</span></div>
+          </form>
+        </section>
+
+        <section class="panel output-panel" aria-labelledby="output-heading">
+          <div class="panel-heading"><div><span class="section-number">02 / OUTPUT</span><h2 id="output-heading">Your H3 prompt</h2></div><span class="format-badge" id="format-badge">BASE FORMAT</span></div>
+          <div class="storyboard-paste-help" id="storyboard-paste-help" hidden><strong>Paste into ComfyUI</strong><p>In H3 Storyboard Director, paste the output into <code>script</code>. Set <code>seconds_per_chunk</code> to <span id="paste-seconds-per-chunk">10</span> and <code>chunk_count</code> to <span id="paste-chunk-count">4</span>. Leave <code>shared_continuity</code> empty because the script includes <code>[shared]</code>.</p><p id="storyboard-settings-note"></p></div>
+          <div class="output-content"><label for="output" class="sr-only">Editable H3 prompt</label><textarea id="output" rows="22" spellcheck="false" placeholder="Your formatted prompt will appear here.&#10;&#10;Review it, make it yours, then copy it into H3." aria-describedby="output-help"></textarea><div class="output-toolbar"><span class="count" id="output-count">0 words · 0 characters</span><div class="output-actions"><button type="button" class="secondary-button" id="download-button" disabled aria-label="Download prompt as a text file"><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><path d="M10 3v9m-3-3 3 3 3-3M4 13v3h12v-3" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Save .txt</span></button><button type="button" class="secondary-button" id="copy-button" disabled><svg aria-hidden="true" viewBox="0 0 20 20" fill="none"><rect x="7" y="7" width="9" height="10" rx="1.4" stroke="currentColor" stroke-width="1.5"/><path d="M12 7V3H3v10h4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="copy-label">Copy prompt</span></button></div></div></div>
+          <div class="validation-box" id="validation-box" data-state="empty"><div class="validation-heading"><div><span class="validation-icon" id="validation-icon" aria-hidden="true">○</span><strong id="validation-title">Ready when you are</strong></div><button type="button" class="text-button" id="validate-button" disabled>Check format</button></div><p id="validation-description">Your result will be checked for the selected H3 structure.</p><div id="validation-details"></div></div>
+          <p id="output-help" class="output-help">You can edit the result. Automated checks cover structure and selected text; review the creative intent, timing, and reference fidelity yourself.</p>
+          <section class="storyboard-report" id="storyboard-report-section" hidden aria-labelledby="storyboard-report-heading"><h3 id="storyboard-report-heading">Storyboard generation report</h3><p class="field-help" id="storyboard-report-status"></p><pre id="storyboard-report"></pre></section>
+        </section>
+      </div>
+
+      <div class="feedback" id="feedback" role="status" aria-live="polite" aria-atomic="true"></div>
+      <div class="error-message" id="error-message" role="alert" hidden></div>
+      <noscript><p class="error-message">JavaScript is needed to use Prompt Studio. Enable it in your browser, then reload.</p></noscript>
+    </main>
+
+    <footer><div><strong>Built around the official guides.</strong><div class="source-links" id="source-links"><a href="https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md" target="_blank" rel="noopener noreferrer">Base & keyframes ↗</a><a href="https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_ref_en.md" target="_blank" rel="noopener noreferrer">Full reference ↗</a><span>Guide snapshot · Oct 22, 2026</span></div></div><p>Formats prompts. Doesn’t generate video.<br>Your drafts are not saved between visits.</p></footer>
+  </div>
+</body>
+</html>
