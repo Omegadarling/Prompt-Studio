@@ -7,9 +7,10 @@ import { createProviderManager, connectionFingerprint } from './settings.mjs';
 import { normalizeInput, buildMessages, finalizeOutput, validateOutput } from './prompting.mjs';
 import { describeMediaAsset, suggestAssetsFromBrief } from './asset-drafting.mjs';
 import { normalizeJob, buildStoryboardMessages, validateStoryboard, storyboardReport } from './storyboard.mjs';
+import { applyVoiceDirections } from './voices.mjs';
 
 const ROOT = dirname(fileURLToPath(import.meta.url));
-export const VERSION = '1.3.0';
+export const VERSION = '1.4.0';
 export const APP_ID = 'minimax-h3-prompt-studio';
 const SOURCES = [
   { label: 'Base & keyframe guide', url: 'https://huggingface.co/MiniMaxAI/MiniMax-H3/blob/main/docs/VIDEO_PROMPT_WRITING_GUIDE_base_en.md' },
@@ -21,7 +22,7 @@ export async function rewrite(raw, provider = createProvider()) {
   const storyboard = input.outputFormat === 'storyboard';
   const messages = storyboard ? buildStoryboardMessages(input) : buildMessages(input);
   const context = { mode: input.mode, ...(storyboard ? { outputFormat: 'storyboard', chunkCount: input.storyboard.chunkCount, storyboard: input.storyboard } : {}) };
-  const finalize = text => storyboard ? text.trim() : finalizeOutput(text, input);
+  const finalize = text => applyVoiceDirections(storyboard ? text.trim() : finalizeOutput(text, input), input);
   const validate = text => storyboard ? validateStoryboard(text, input) : validateOutput(text, input);
   const extra = storyboard ? { storyboardReport: storyboardReport(input) } : {};
   const deadline = Date.now() + 300000;
@@ -154,10 +155,10 @@ export function makeServer({ provider = createProvider(), allowedHosts = [], hos
         }
         return send(200, { app: APP_ID, version: VERSION, provider: status, settings, connectionFingerprint: fingerprint, hosting: { label: hostLabel, host: request.headers.host }, sources: SOURCES });
       }
-      const files = { '/': ['index.html', 'text/html'], '/style.css': ['style.css', 'text/css'], '/app.js': ['app.js', 'text/javascript'], '/assets.mjs': ['assets.mjs', 'text/javascript'] };
+      const files = { '/': ['index.html', 'text/html'], '/style.css': ['style.css', 'text/css'], '/app.js': ['app.js', 'text/javascript'], '/assets.mjs': ['assets.mjs', 'text/javascript'], '/voices.mjs': ['voices.mjs', 'text/javascript'] };
       if (!files[pathname]) return send(404, { error: 'Not found.' });
       const [file, type] = files[pathname];
-      const body = await readFile(pathname === '/assets.mjs' ? join(ROOT, file) : join(ROOT, 'public', file));
+      const body = await readFile(['/assets.mjs', '/voices.mjs'].includes(pathname) ? join(ROOT, file) : join(ROOT, 'public', file));
       response.writeHead(200, { 'Content-Type': `${type}; charset=utf-8` }); response.end(body);
     } catch (error) {
       if (!response.headersSent) send(error.status || 500, { error: error.status ? error.message : 'The local app could not complete this request. Your input is unchanged.' });

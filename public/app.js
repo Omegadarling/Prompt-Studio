@@ -1,4 +1,5 @@
 import { numberAssets, serializeAssets, MAX_ASSETS, MAX_ASSET_DESCRIPTION_LENGTH, MAX_REFERENCE_NOTES_LENGTH } from '/assets.mjs';
+import { VOICE_PRESETS, VOICE_GROUPS, MAX_CHARACTER_VOICES, MAX_VOICE_DESCRIPTION_LENGTH, MAX_CHARACTER_NAME_LENGTH } from '/voices.mjs';
 
 'use strict';
 
@@ -24,6 +25,7 @@ const els = Object.fromEntries([
   'output-format', 'timing', 'timing-field', 'timing-help', 'storyboard-settings', 'seconds-per-chunk', 'chunk-count', 'duration-field',
   'output-heading', 'storyboard-paste-help', 'paste-seconds-per-chunk', 'paste-chunk-count', 'storyboard-settings-note',
   'storyboard-report-section', 'storyboard-report', 'storyboard-report-status',
+  'voice-count', 'voice-list', 'voice-add', 'voice-notice',
 ].map((id) => [id, $(id)]));
 
 const modes = {
@@ -70,6 +72,10 @@ let copyTimer;
 let dragDepth = 0;
 let pendingExample = null;
 let assets = [];
+let characterVoices = [];
+let voiceSequence = 0;
+let voiceControls = [];
+const voiceNameInputs = new Map();
 let assetSequence = 0;
 let assetReviewRequired = false;
 let assetBusy = '';
@@ -104,6 +110,122 @@ function showError(message) {
 }
 function clearError() { els['error-message'].hidden = true; els['error-message'].textContent = ''; }
 
+function renderCharacterVoices() {
+  voiceControls = [];
+  voiceNameInputs.clear();
+  els['voice-list'].replaceChildren();
+  els['voice-count'].textContent = `${characterVoices.length} ${characterVoices.length === 1 ? 'character' : 'characters'}`;
+  for (const [index, voice] of characterVoices.entries()) {
+    const label = `Character ${index + 1}`;
+    const card = document.createElement('article');
+    card.className = 'voice-card';
+    card.dataset.voiceId = voice.id;
+    card.setAttribute('role', 'listitem');
+    card.setAttribute('aria-label', label);
+    const heading = document.createElement('div');
+    heading.className = 'voice-card-heading';
+    const title = document.createElement('strong');
+    title.textContent = voice.name.trim() || label;
+    const remove = document.createElement('button');
+    remove.type = 'button';
+    remove.className = 'text-button voice-remove';
+    remove.textContent = 'Remove';
+    remove.setAttribute('aria-label', `Remove ${voice.name.trim() || label} voice`);
+    remove.addEventListener('click', () => {
+      if (generating) return;
+      characterVoices = characterVoices.filter(item => item.id !== voice.id);
+      renderCharacterVoices();
+      markChanged();
+      els['voice-notice'].textContent = `${voice.name.trim() || label} voice removed.`;
+      const next = characterVoices[Math.min(index, characterVoices.length - 1)];
+      (voiceNameInputs.get(next?.id) || els['voice-add']).focus();
+    });
+    heading.append(title, remove);
+    const fields = document.createElement('div');
+    fields.className = 'voice-fields';
+    const field = (text, control, suffix) => {
+      const wrap = document.createElement('div');
+      wrap.className = 'field';
+      control.id = `${voice.id}-${suffix}`;
+      const caption = document.createElement('label');
+      caption.htmlFor = control.id;
+      caption.textContent = text;
+      wrap.append(caption, control);
+      return wrap;
+    };
+    const name = document.createElement('input');
+    name.type = 'text';
+    name.value = voice.name;
+    name.placeholder = 'e.g. Captain Mira';
+    name.maxLength = MAX_CHARACTER_NAME_LENGTH;
+    name.required = true;
+    name.setAttribute('aria-describedby', 'voice-help');
+    name.addEventListener('input', () => {
+      if (generating) return;
+      voice.name = name.value;
+      title.textContent = name.value.trim() || label;
+      remove.setAttribute('aria-label', `Remove ${name.value.trim() || label} voice`);
+      markChanged();
+    });
+    voiceNameInputs.set(voice.id, name);
+    const preset = document.createElement('select');
+    const empty = document.createElement('option');
+    empty.value = '';
+    empty.textContent = 'Choose a voice';
+    preset.append(empty);
+    for (const groupName of VOICE_GROUPS) {
+      const group = document.createElement('optgroup');
+      group.label = groupName;
+      for (const item of VOICE_PRESETS.filter(item => item.group === groupName)) {
+        const option = document.createElement('option');
+        option.value = item.id;
+        option.textContent = `${item.name} — ${item.style}`;
+        group.append(option);
+      }
+      preset.append(group);
+    }
+    preset.value = voice.presetId;
+    const description = document.createElement('textarea');
+    description.rows = 4;
+    description.maxLength = MAX_VOICE_DESCRIPTION_LENGTH;
+    description.required = true;
+    description.value = voice.description;
+    description.placeholder = 'Choose a preset above, then edit its speaking-voice description.';
+    description.setAttribute('aria-describedby', 'voice-help');
+    description.addEventListener('input', () => {
+      if (generating) return;
+      voice.description = description.value;
+      markChanged();
+    });
+    preset.addEventListener('change', () => {
+      if (generating) return;
+      voice.presetId = preset.value;
+      const selected = VOICE_PRESETS.find(item => item.id === preset.value);
+      if (selected) {
+        voice.description = selected.description;
+        description.value = selected.description;
+        els['voice-notice'].textContent = `${selected.name}'s speaking description filled in for ${voice.name.trim() || label}. You can edit it below.`;
+      }
+      markChanged();
+    });
+    fields.append(field(`${label} name`, name, 'name'), field(`${label} voice preset`, preset, 'preset'));
+    card.append(heading, fields, field(`${label} speaking description`, description, 'description'));
+    els['voice-list'].append(card);
+    voiceControls.push(name, preset, description, remove);
+  }
+  updateActions();
+}
+
+function addCharacterVoice() {
+  if (generating || characterVoices.length >= MAX_CHARACTER_VOICES) return;
+  const voice = { id: `character-${++voiceSequence}`, name: '', presetId: '', description: '' };
+  characterVoices.push(voice);
+  renderCharacterVoices();
+  markChanged();
+  els['voice-notice'].textContent = 'Character added. Match its name to your brief, choose a voice preset, then edit its description as needed.';
+  voiceNameInputs.get(voice.id)?.focus();
+}
+
 function isStoryboard() { return els['output-format'].value === 'storyboard'; }
 function getStoryboardSettings() { return { secondsPerChunk: Number(els['seconds-per-chunk'].value), chunkCount: Number(els['chunk-count'].value) }; }
 
@@ -119,6 +241,7 @@ function getInput() {
     duration: Number(els.duration.value),
     referenceNotes: mode === 't2v' ? '' : els['reference-notes'].value,
     assets: mode === 't2v' ? [] : assets.map(({ id, type, description }) => ({ id, type, description })),
+    characterVoices: characterVoices.map(({ id, name, presetId, description }) => ({ id, name, presetId, description })),
     creativity: els.creativity.value,
     audio: els.audio.value,
     music: els.music.value,
@@ -140,6 +263,8 @@ function updateActions() {
   els['example-button'].disabled = generating || Boolean(assetBusy);
   els['example-cancel'].disabled = generating || Boolean(assetBusy);
   els['asset-add'].disabled = generating || assets.length >= MAX_ASSETS;
+  els['voice-add'].disabled = generating || characterVoices.length >= MAX_CHARACTER_VOICES;
+  for (const control of voiceControls) control.disabled = generating;
   els['asset-files-add'].disabled = aiBusy || connectionIsDirty() || !assetAIReady || assets.length >= MAX_ASSETS;
   els['asset-suggest'].disabled = aiBusy || connectionIsDirty() || !assetAIReady || !els.prompt.value.trim() || assets.length >= MAX_ASSETS;
   els['asset-suggest'].textContent = assetBusy === 'suggest' ? 'Suggesting assets…' : 'Suggest from brief';
@@ -1210,6 +1335,8 @@ document.addEventListener('keydown', (event) => {
   }
 });
 
+els['voice-add'].addEventListener('click', addCharacterVoice);
+renderCharacterVoices();
 updateMode();
 updateConnectionHints();
 updateCounts();

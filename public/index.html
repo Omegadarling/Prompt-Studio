@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#171918">
-  <title>Prompt Studio · 1.3.0</title>
+  <title>Prompt Studio · 1.4.0</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48'%3E%3Crect width='48' height='48' rx='12' fill='%23e9b96e'/%3E%3Ctext x='24' y='31' text-anchor='middle' font-family='Arial' font-weight='bold' font-size='23' fill='%23171918'%3EPS%3C/text%3E%3C/svg%3E">
   <link rel="stylesheet" href="/style.css">
   <script src="/app.js" type="module"></script>
@@ -15,7 +15,7 @@
   <div class="app-shell">
     <header class="masthead">
       <a class="brand" href="/" aria-label="Prompt Studio home"><span class="brand-mark" aria-hidden="true">PS<span></span></span><span>Prompt Studio</span></a>
-      <div class="version"><span id="hosting-label">PROMPT WORKSPACE</span> <span class="dot" aria-hidden="true"></span> <span id="version">v1.3.0</span></div>
+      <div class="version"><span id="hosting-label">PROMPT WORKSPACE</span> <span class="dot" aria-hidden="true"></span> <span id="version">v1.4.0</span></div>
     </header>
 
     <main>
@@ -71,6 +71,14 @@
                 <div class="drop-area" id="drop-area"><textarea id="prompt" name="prompt" rows="10" maxlength="16000" required spellcheck="true" placeholder="Describe the subject, action, visual style, and camera move. Include any dialogue or text exactly as you want it to appear." aria-describedby="drop-help"></textarea><div class="drop-footer"><span id="drop-help">Paste a brief or drop a .txt / .md file</span><button type="button" id="import-button" class="text-button">Browse files</button></div><div class="drop-overlay" aria-hidden="true">Drop your prompt here<span>.txt or .md</span></div></div>
                 <input type="file" id="file-input" accept=".txt,.md,text/plain,text/markdown" hidden tabindex="-1">
               </div>
+
+              <section class="field character-voices" aria-labelledby="voice-heading">
+                <div class="field-label-row"><h3 class="asset-section-title" id="voice-heading">Character voices <span class="optional">optional</span></h3><span class="count" id="voice-count">0 characters</span></div>
+                <p class="field-help" id="voice-help">Use the character's name from your brief. Choose a speaking voice, then adjust its description. This shapes existing dialogue; it does not add dialogue or generate a voice preview.</p>
+                <div class="voice-list" id="voice-list" role="list" aria-label="Character speaking voices"></div>
+                <button class="secondary-button voice-add" id="voice-add" type="button">+ Add character</button>
+                <p class="voice-notice" id="voice-notice" role="status" aria-live="polite" aria-atomic="true"></p>
+              </section>
 
               <section class="field reference-field" id="reference-field" hidden aria-labelledby="reference-label">
                 <div class="field-label-row"><h3 class="asset-section-title" id="reference-label">Reference assets</h3><span class="count" id="asset-count">0 assets</span></div>

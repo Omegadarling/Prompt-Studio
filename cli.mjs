@@ -5,7 +5,7 @@ import { createProviderManager } from './settings.mjs';
 // A JSON job is optional; a plain text file uses the same defaults as the app.
 const [inputFile, outputFile] = process.argv.slice(2);
 if (!inputFile || ['-h', '--help'].includes(inputFile)) {
-  console.log('Usage: node cli.mjs brief.txt [prompt-output.txt]\n       node cli.mjs job.json [prompt-output.txt]\n\nJSON fields: prompt, mode (t2v/i2v/fl2v/l2v/reference), duration, referenceNotes or assets,\ncreativity (faithful/enrich), audio (natural/silent), music (auto/none), exactText,\ntiming (cued/natural), outputFormat (h3/storyboard),\nstoryboard: { secondsPerChunk: 10, chunkCount: 4 }.\nUses the saved AI connection (Ollama by default). No video is generated.');
+  console.log('Usage: node cli.mjs brief.txt [prompt-output.txt]\n       node cli.mjs job.json [prompt-output.txt]\n\nJSON fields: prompt, characterVoices: [{ name, presetId, description (optional) }], mode (t2v/i2v/fl2v/l2v/reference), duration, referenceNotes or assets,\ncreativity (faithful/enrich), audio (natural/silent), music (auto/none), exactText,\ntiming (cued/natural), outputFormat (h3/storyboard),\nstoryboard: { secondsPerChunk: 10, chunkCount: 4 }.\nUses the saved AI connection (Ollama by default). No video is generated.');
 } else {
   try {
     const content = await readFile(inputFile, 'utf8');

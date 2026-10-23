@@ -1,6 +1,6 @@
 # Prompt Studio — project notes
 
-Version: 1.3.0. Read this file before editing or adding features. If `LOCAL_NOTES.md` is present, read it for private deployment history and machine-specific decisions. Keep that file, runtime state, credentials, personal launchers, and deployment receipts out of the public repository.
+Version: 1.4.0. Read this file before editing or adding features. If `LOCAL_NOTES.md` is present, read it for private deployment history and machine-specific decisions. Keep that file, runtime state, credentials, personal launchers, and deployment receipts out of the public repository.
 
 ## Purpose
 
@@ -18,6 +18,7 @@ Node.js 22+ runs the server and CLI with no npm dependencies. `npm start` serves
 | `prompting.mjs` | H3 normalization, compact mode-specific instructions, keyframe alignment, and structural checks. |
 | `storyboard.mjs` | Director frame planning, instructions/schema, script serialization, timing report, and per-chunk checks. |
 | `assets.mjs` | Shared browser/server numbering, validation, and serialization; served as `/assets.mjs`. |
+| `voices.mjs` | Shared 30-preset catalog, bounded character choices, conservative narrative insertion, voice placement and speaker-ID checks; served as `/voices.mjs`. |
 | `asset-drafting.mjs` | Media descriptions, explicitly labeled brief-only guesses, and preservation of existing card slots. |
 | `media.mjs` | Bounded media validation, video-frame handling, PCM WAV checks, and transient whisper.cpp transcription. |
 | `public/` | Browser UI, text import, cards/media previews, connection controls, editable output, and copy/download/recheck. |
@@ -44,6 +45,14 @@ Node.js 22+ runs the server and CLI with no npm dependencies. `npm start` serves
 - Render audio starter descriptions directly from detected speech and duration. A second LLM summary can mistake spoken narration for observed action. State that timbre, music, and nonverbal sounds were not analyzed. Delete transcription temporary files on success and failure.
 - No prompt/card/media history or credentials belong in browser local storage. Late AI descriptions must not overwrite edits; offer explicit replacement. Failed requests preserve drafts, cards, and previous output.
 - Preview and sampling require CSP image/media `blob:` allowances; keep script and connection origins restricted. Native confirmations can stall embedded browsers: use inline controls. Output edits and relevant control changes invalidate prior validation.
+
+## Character voice decisions (1.4.0)
+
+- The menu groups 15 adult female and 15 adult male fictional presets. Each has a stable ID, a menu name/style and a separate editable description. Scene character names are independent; never turn a preset name into a new character. No voice audio is generated or cloned.
+- `characterVoices` is normalized on the server and shared by browser/API/CLI. Maximum 16 unique character names, 80 characters per name, 1,000 per description and 8,000 combined. Catalog defaults are resolved server-side. Preserve all drafts across mode switches and failures; edits invalidate prior checks.
+- Voice traits belong with a named vocal source in the main narrative, outside dialogue and visible text. Instructions retain the matching Subject definition where applicable. Speaker IDs follow actual vocal order and remain global across storyboard chunks. Silence makes the choices inactive; no voice selection authorizes invented speech.
+- MiniCPM may omit voice directions even when supplied in both system and creative instructions. Moving them into the brief did not reliably help. `applyVoiceDirections` adds only exact selected text for an identifiable named vocal source, independently in each chunk. It preserves existing prose, dialogue, reference labels, timing and IDs. It never invents an ID or guesses an absent character. Model format problems remain visible; do not mistake inserted directions for a validated whole prompt.
+- Named speaker-ID bindings and named Subject definitions permit checks; direct untagged `Name says/answers/...` can receive a direction while remaining flagged for its missing ID. Missing or ambiguous associations need review. Never repair unrelated semantics by string replacement. Repeat exact directions per vocal chunk, not only in shared continuity. Check tests for insertion idempotence, quoted names, inactive characters and cross-chunk ID reuse before changing this logic.
 
 ## Timing and Storyboard Director contract
 

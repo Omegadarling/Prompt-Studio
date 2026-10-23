@@ -73,6 +73,15 @@ test('server starts on ephemeral loopback and health does not contact a provider
   assert.equal(provider.calls.complete.length, 0);
 });
 
+test('browser voice catalog is served as JavaScript without inference', async (t) => {
+  const { provider, request } = await start(t);
+  const response = await request('/voices.mjs');
+  assert.equal(response.status, 200);
+  assert.match(response.headers['content-type'], /text\/javascript/);
+  assert.match(response.data, /export const VOICE_PRESETS/);
+  assert.equal(provider.calls.complete.length, 0);
+});
+
 test('LAN deployment blocks forwarded requests and distinguishes private clients', async (t) => {
   const { request, provider } = await start(t);
   assert.equal((await request('/api/status', { headers: { 'X-Forwarded-For': '192.168.1.20' } })).status, 403);

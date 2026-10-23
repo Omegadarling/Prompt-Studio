@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createContext, runInContext } from 'node:vm';
 import { numberAssets, serializeAssets, MAX_ASSETS, MAX_ASSET_DESCRIPTION_LENGTH, MAX_REFERENCE_NOTES_LENGTH } from '../assets.mjs';
+import { VOICE_PRESETS, VOICE_GROUPS, MAX_CHARACTER_VOICES, MAX_VOICE_DESCRIPTION_LENGTH, MAX_CHARACTER_NAME_LENGTH } from '../voices.mjs';
 
-const source = (await readFile(new URL('../public/app.js', import.meta.url), 'utf8')).replace(/^import \{[^}]+\} from '\/assets\.mjs';\s*/, '');
+const source = (await readFile(new URL('../public/app.js', import.meta.url), 'utf8')).replace(/^import \{[^}]+\} from '\/(?:assets|voices)\.mjs';\s*/gm, '');
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 
 // Execute shipped event handlers against a small DOM with deferred synthetic API responses.
@@ -28,6 +29,7 @@ async function createUI() {
     document: { getElementById: get, addEventListener() {}, createElement: element, body: { append() {} } },
     window: {}, navigator: { clipboard: { writeText: async (text) => { copied = text; } } }, URL, Blob, AbortController, clearTimeout,
     numberAssets, serializeAssets, MAX_ASSETS, MAX_ASSET_DESCRIPTION_LENGTH, MAX_REFERENCE_NOTES_LENGTH,
+    VOICE_PRESETS, VOICE_GROUPS, MAX_CHARACTER_VOICES, MAX_VOICE_DESCRIPTION_LENGTH, MAX_CHARACTER_NAME_LENGTH,
     setTimeout(fn, ms) { const timer = setTimeout(fn, ms); timer.unref(); return timer; },
     fetch: async (path, options) => {
       if (path === '/api/status?refresh=1') return response({ version: '1.3.0', connectionFingerprint: 'fixture', hosting: { label: 'test' }, settings: { kind: 'ollama', baseUrl: 'http://127.0.0.1:11434', model: 'fixture' }, provider: { available: true, model: 'fixture' } });

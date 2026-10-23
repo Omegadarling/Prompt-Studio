@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { createContext, runInContext } from 'node:vm';
 import { numberAssets, serializeAssets, MAX_ASSETS, MAX_ASSET_DESCRIPTION_LENGTH, MAX_REFERENCE_NOTES_LENGTH } from '../assets.mjs';
+import { VOICE_PRESETS, VOICE_GROUPS, MAX_CHARACTER_VOICES, MAX_VOICE_DESCRIPTION_LENGTH, MAX_CHARACTER_NAME_LENGTH } from '../voices.mjs';
 
-const source = (await readFile(new URL('../public/app.js', import.meta.url), 'utf8')).replace(/^import \{[^}]+\} from '\/assets\.mjs';\s*/, '');
+const source = (await readFile(new URL('../public/app.js', import.meta.url), 'utf8')).replace(/^import \{[^}]+\} from '\/(?:assets|voices)\.mjs';\s*/gm, '');
 const html = await readFile(new URL('../public/index.html', import.meta.url), 'utf8');
 
 // Exercise the shipped UI's event listeners with synthetic elements and no real inference.
@@ -68,6 +69,7 @@ async function createUI(options = {}) {
     createImageBitmap: async () => ({ width: 4000, height: 2000, close() {} }),
     btoa: (value) => Buffer.from(value, 'binary').toString('base64'),
     MAX_ASSETS, MAX_ASSET_DESCRIPTION_LENGTH, MAX_REFERENCE_NOTES_LENGTH,
+    VOICE_PRESETS, VOICE_GROUPS, MAX_CHARACTER_VOICES, MAX_VOICE_DESCRIPTION_LENGTH, MAX_CHARACTER_NAME_LENGTH,
     setTimeout(fn, ms) { const timer = setTimeout(fn, ms); timer.unref(); return timer; },
     fetch: async (path, options) => {
       if (path === '/api/assets/describe' || path === '/api/assets/suggest') {

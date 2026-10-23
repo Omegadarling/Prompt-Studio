@@ -27,6 +27,10 @@ const SECTION_DESCRIPTIONS = {
   overall_soundscape: 'One English paragraph about ambience, physical sounds, and non-verbal sounds; do not repeat dialogue or lyrics. N/A only when complete silence was explicitly requested.',
   non_diegetic_music: 'English description of audience-only background score, or N/A when no score is requested or allowed. Complete silence and the no-music setting require N/A. Do not place character-audible music here.',
 };
+for (const field of ['integrated_multimodal_description', 'detailed_description']) {
+  SECTION_DESCRIPTIONS[field] += ' When characterVoices is supplied, put each vocalizing character name beside their stable speaker ID and include their exact selected voice description at their first vocal appearance, outside dialogue and visible-text quotes. Do not invent speech for a silent character.';
+}
+SECTION_DESCRIPTIONS.subject_definitions += ' Keep a selected character name and voice description with its matching Subject, without inventing an extra reference asset for a voice preset.';
 
 function structuredRequest(messages, context) {
   if (context?.outputFormat === 'storyboard') {

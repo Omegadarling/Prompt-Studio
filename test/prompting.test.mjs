@@ -25,7 +25,7 @@ non_diegetic_music:
 N/A`;
 
 test('input defaults are usable and unknown fields are not propagated', () => {
-  assert.deepEqual(normalizeInput({ ...input, ignored: 'value' }), { ...input, mode: 't2v', duration: 5, referenceNotes: '', creativity: 'faithful', audio: 'natural', music: 'auto', timing: 'cued', exactText: '' });
+  assert.deepEqual(normalizeInput({ ...input, ignored: 'value' }), { ...input, mode: 't2v', duration: 5, referenceNotes: '', creativity: 'faithful', audio: 'natural', music: 'auto', timing: 'cued', exactText: '', characterVoices: [] });
   assert.equal(normalizeInput({ prompt: ' a\r\nb ' }).prompt, 'a\nb');
 });
 

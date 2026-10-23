@@ -1,4 +1,4 @@
-# Prompt Studio — 1.3.0
+# Prompt Studio — 1.4.0
 
 Turn a video brief into an editable MiniMax H3 prompt, or a script for ComfyUI's H3 Storyboard Director. Prompt Studio follows MiniMax's official writing guides and checks the resulting structure. It formats prompts; it does not generate video or run ComfyUI.
 
@@ -26,7 +26,7 @@ Open **AI connection** and choose your provider:
 1. Paste a brief, or drop a `.txt` or `.md` file into the input.
 2. Keep **H3 prompt** as the output format, choose the generation mode, and enter the intended duration.
 3. In a reference mode, add asset cards manually, add files to draft descriptions, or choose **Suggest assets from brief** for clearly labeled guesses. Edit descriptions and arrange cards to match your H3 reference order.
-4. Choose event timing and any creative, sound, music, or exact-text options.
+4. Optionally add **Character voices**, match each name to your brief, and choose a preset. Choose event timing and any creative, sound, music, or exact-text options.
 5. Format, review the checks and wording, then copy or download the result. The output remains editable; rechecking does not request another model generation.
 
 | H3 mode | Reference cards |
@@ -40,6 +40,14 @@ Open **AI connection** and choose your provider:
 **Cued timing** adds estimated event-time cues inside a shot while retaining requested timing. **Natural timing** avoids adding estimated cues to ordinary H3 prompts; supplied timing still matters. A time cue is not a camera cut. Review and edit estimates—text cues do not guarantee that a generated video performs an action at an exact frame.
 
 Use **Exact text** for dialogue or on-screen wording that must appear verbatim, one item per line. Rewrite instructions protect supplied dialogue; this field also enables explicit presence checks. Those checks cannot establish correct speaker ownership or full creative fidelity.
+
+### Character voices
+
+Click **Add character**, enter the character's name as used in your brief, and choose a named voice from **Adult female** or **Adult male**. Each group contains 15 presets covering different registers, textures, pacing, accents, and delivery styles. A preset fills in an editable speaking description; choosing another preset replaces that description. Remove a character's row to stop applying its voice. Voice rows and edits stay in the page when switching generation modes.
+
+The character keeps their own name; the preset name is just a menu label. The formatter places voice directions with speaker identity in the main narrative, outside `<d>` dialogue tags. The app also inserts a missing selected direction when the generated text clearly identifies that vocal source; ambiguous or absent names remain flagged for review. This does not repair unrelated model formatting errors. In Storyboard Director mode, each applicable chunk receives its own direction and speaker IDs must stay consistent across chunks. Check the resulting voice ownership and any conflicting reference-audio direction before generating video.
+
+Presets never add dialogue or make a silent character speak. Complete silence disables the directions while retaining the selected rows. These are fictional text performance presets, not recorded samples, audio previews, or voice cloning; they do not guarantee identical generated voices. The app supports up to 16 characters, names up to 80 characters, descriptions up to 1,000 characters, and 8,000 characters combined across names and descriptions. Keep descriptions to one paragraph without H3 markup.
 
 ### Reference cards and media
 
@@ -148,6 +156,17 @@ Or use a JSON job to choose settings:
 ```
 
 Run `node cli.mjs job.json prompt-output.txt`. Set `"timing": "natural"` to avoid added estimated cues for ordinary H3 output.
+
+For named voices, add a `characterVoices` array to either kind of JSON job:
+
+```json
+"characterVoices": [
+  { "name": "Mira", "presetId": "nora" },
+  { "name": "Kai", "presetId": "theo", "description": "Adult male voice with a warm baritone, crisp diction, and brisk conversational pacing." }
+]
+```
+
+The server fills the preset description when `description` is omitted. Preset IDs and the complete catalog are in [`voices.mjs`](voices.mjs). Names must be unique and match the characters in the brief; speaker numbering follows actual vocal order, not array order.
 
 A storyboard job uses the same structured Picture cards as the UI:
 

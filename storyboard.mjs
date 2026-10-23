@@ -1,4 +1,5 @@
 import { normalizeInput, buildMessages, validateOutput } from './prompting.mjs';
+import { checkCharacterVoices } from './voices.mjs';
 
 export const STORYBOARD_FIELDS = ['subject_definitions', 'summary', 'retention_analysis', 'detailed_description', 'overall_soundscape', 'non_diegetic_music'];
 const FPS = 24;
@@ -51,6 +52,7 @@ export function storyboardReport(input) {
 export function buildStoryboardMessages(input) {
   const plan = storyboardPlan(input.storyboard);
   const messages = buildMessages(input);
+  if (input.characterVoices?.length) messages[0].content += '\n\nSTORYBOARD CHARACTER VOICES\nKeep each selected character voice and its global speaker ID consistent across all chunks. Persistent voice traits may be included in shared continuity, but repeat the exact selected description beside the named speaker at their first vocal appearance in EACH chunk where they vocalize. Preserve the same matching Subject definition across chunks. Do not require a silent or absent character to speak, repeat dialogue, or reset speaker IDs at a chunk boundary. A voice description only in shared continuity or subject_definitions does not replace its placement in that chunk\'s detailed_description.';
   messages[0].content += `\n\nSTORYBOARD DIRECTOR OUTPUT OVERRIDE\nThe target is MiniMax H3 Storyboard Long Reference to Video - Turbo 4-Step v1.0.0, using H3 Storyboard Director 1.0.0. The whole story is ${plan.duration.toFixed(6)} seconds, not one clip. Divide the requested action into exactly ${plan.chunkCount} sequential chunks. Do NOT repeat the whole story in every chunk. Keep the requested order, all supplied times, dialogue, outcomes and exclusions. Do not put future events or the whole plot into shared continuity.\nReturn a plain script with [shared] followed by persistent identity/style/setting facts only, then [chunk 1] through [chunk ${plan.chunkCount}] on their own lines. Each chunk contains its own complete six-field full-reference H3 prompt. A later transport override may request equivalent JSON. Never put chunk headings inside a field. Shared prose must not contain field headers, dialogue, action beats or timestamps. Each chunk is independently conditioned; retain the SAME Subject/Picture/speaker IDs and exact reference ownership across chunks. Use the same definition text for a recurring Subject. Only apply references actually visible in that chunk. Reference pictures are global identity/appearance assets, NOT first/last frames. Do not invent Video or Audio assets for the generated previous clip.\nEach chunk starts with its current scene/pose and ends in a state the next chunk can continue. Don't replay earlier actions. A chunk boundary is NOT a camera cut: keep continuous camera/pose/motion unless the brief explicitly requests a cut. Restart shot numbering at [Shot 1] in each chunk; the opening composition has no timestamp. Keep global story times OUT of the final prose; use local sampled-clip event cues after the opening composition. Preserve explicitly timed events by converting global time g to local g - sampleStartFrame/24. Never schedule a new event in a continuation's discarded local 0–${(OVERLAP / FPS).toFixed(6)} seconds. Ranges spanning a join must be split into their appropriate continuous phases, without duplicating the event onset. Later cuts also use local times. The final state must be reached in the last delivered chunk.\nUse 'At 2.000 seconds, ...' or 'From 2.000 to 3.000 seconds, ...' for within-shot event cues. Put these only in detailed_description after its style/opening composition. Apply timing cues for storyboard output even when natural timing was selected for ordinary H3 prompts. Keep exact words in their correct chunk only; do not repeat dialogue in every chunk. If the supplied timing cannot fit the actual finished duration, flag that conflict rather than move or omit the event. Keep each chunk concise enough to finish the entire response; never invent detail to reach 350 words.\nThe application-calculated frame plan is authoritative:\n${JSON.stringify(plan)}\nPlain-script output uses only [shared] and [chunk N] top-level headings. Do not emit global [at ...] sections because this format keeps each chunk's events INSIDE its detailed_description field. Do not include a timing report, copy instructions or settings in the script.`;
   messages[1].content = JSON.stringify({ ...input, duration: plan.duration, storyboardPlan: plan });
   return messages;
@@ -95,6 +97,7 @@ export function validateStoryboard(text, input) {
   if (STORYBOARD_FIELDS.some(f => new RegExp(`^${f}:`, 'm').test(shared))) errors.push('Shared continuity must contain persistent prose only, not H3 field headers.');
   if (/<d>|\b(?:At|From) \d+(?:\.\d+)? seconds?\b/.test(shared)) errors.push('Move dialogue and timed events out of [shared] into their individual chunks.');
   const chunkTexts = [];
+  const narratives = [], allDefinitions = [];
   const definitions = new Map();
   for (const c of plan.chunks) {
     const index = headings.findIndex(m => m[1] === `chunk ${c.index}`);
@@ -103,8 +106,9 @@ export function validateStoryboard(text, input) {
     chunkTexts.push(body);
     const perChunk = validateOutput(body, { ...input, prompt: input.prompt.replace(/<d>[\s\S]*?<\/d>/g, ''), exactText: '', duration: plan.frames / FPS, timing: 'cued' });
     errors.push(...perChunk.errors.map(e => `Chunk ${c.index}: ${e}`));
-    warnings.push(...perChunk.warnings.filter(w => !/350–500/.test(w)).map(w => `Chunk ${c.index}: ${w}`));
+    warnings.push(...perChunk.warnings.filter(w => !/350–500|^Voice preset for |^Review that each selected voice|^Character voice presets are inactive/.test(w)).map(w => `Chunk ${c.index}: ${w}`));
     const desc = body.match(/(?:^|\n)detailed_description:\s*([\s\S]*?)(?=\noverall_soundscape:|$)/)?.[1] ?? '';
+    narratives.push(desc);
     const unquoted = desc.replace(/<d>[\s\S]*?<\/d>|"[^"\n]*"/g, '');
     if (c.index > 1) {
       for (const time of unquoted.matchAll(/\b(?:At|From)\s+(\d+(?:\.\d+)?)(?:\s+to\s+\d+(?:\.\d+)?)?\s+seconds?\b/gi)) {
@@ -113,6 +117,7 @@ export function validateStoryboard(text, input) {
       }
     }
     const defs = body.match(/(?:^|\n)subject_definitions:\s*([\s\S]*?)(?=\nsummary:|$)/)?.[1] ?? '';
+    allDefinitions.push(defs);
     for (const d of defs.matchAll(/^<(Subject \d+)>\s*([^\n]+)/gm)) {
       const definition = d[2].trim();
       if (definitions.has(d[1]) && definitions.get(d[1]) !== definition) warnings.push(`<${d[1]}> has different definition wording across chunks. Check that identity and source ownership remain unchanged.`);
@@ -123,6 +128,13 @@ export function validateStoryboard(text, input) {
     if (!/^\[(?:shared|chunk [1-8])\]$/.test(match[0].trim())) errors.push('Use only [shared] and [chunk N] top-level headings in this export. Keep local event times inside detailed_description.');
   }
   const all = chunkTexts.join('\n');
+  const voiceCheck = checkCharacterVoices(narratives.join('\n'), allDefinitions.join('\n'), input.characterVoices ?? [], {
+    silent: input.audio === 'silent' || /\b(?:complete|total|absolute) silence\b|\b(?:completely|entirely|fully) silent\b|\bsilent video\b|\bno audio\b/i.test(input.prompt),
+  });
+  // Missing per-chunk descriptions are already checked above; this catches IDs
+  // changing or being reassigned across independently conditioned chunks.
+  errors.push(...voiceCheck.errors.filter(e => /multiple speaker IDs|assigned to more than one/.test(e)));
+  warnings.push(...voiceCheck.warnings);
   for (const line of [...input.exactText.split('\n'), ...[...input.prompt.matchAll(/<d>\[[^\]]+\]\s*([\s\S]*?)<\/d>/g)].map(m => m[1])].map(s => s.trim()).filter(Boolean)) {
     if (!all.includes(line)) errors.push(`Required exact text is missing or changed across the storyboard: ${JSON.stringify(line)}.`);
   }

@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { normalizeAssets, numberAssets, serializeAssets } from './assets.mjs';
+import { normalizeCharacterVoices, checkCharacterVoices } from './voices.mjs';
 
 function optionalGuide(path, title) {
   try { return readFileSync(new URL(path, import.meta.url), 'utf8'); }
@@ -40,6 +41,7 @@ export function normalizeInput(raw) {
     music: choiceField(raw, 'music', ['auto', 'none'], 'auto'),
     timing: choiceField(raw, 'timing', ['cued', 'natural'], 'cued'),
     exactText: stringField(raw, 'exactText', 6000),
+    characterVoices: normalizeCharacterVoices(raw.characterVoices),
   };
   if (!input.prompt) throw new Error('Paste a video idea before formatting it.');
   if (typeof input.duration !== 'number' || !Number.isFinite(input.duration) || input.duration <= 0 || input.duration > 600) {
@@ -128,6 +130,10 @@ EXACT WORDS AND VOICES
 Preserve every user-supplied spoken word, punctuation mark and visible-text line verbatim, including each nonempty exactText line. Keep its original role: dialogue stays dialogue; visible text stays visible text. No translation, paraphrase, new dialogue or invented lyrics. Visible text uses English double quotation marks.
 Speech/lyrics use <d>[Language] exact words</d>, including the square brackets around the language. Put identity, stable speaker ID (S1), action and delivery OUTSIDE the block. Correct syntax example: The robot (S1) says, <d>[Spanish] Ya está.</d> Use the actual user's speaker, language and exact words, not this example's content. Assign IDs in actual vocal order and reuse them; silent subjects get none. Established speakers speaking together use (S1,S2).
 Ordinary on-screen speech visibly moves the speaker's mouth in sync with the words. Never apply the closed-lips rule to normal on-screen speech. ONLY an explicitly requested off-screen voiceover uses 'says in an off-screen voiceover'; immediately after each VOICEOVER block state that the corresponding on-screen character's lips remain completely closed. Do not turn ordinary speech into voiceover. For speech crossing cuts put <scenetrans> at BOTH connecting points inside the blocks and state seamless audio continuity. Use <cutoff> only for speech actually truncated at the video's end.
+
+${input.characterVoices.length ? `CHARACTER VOICE CHOICES
+characterVoices binds each user-supplied character name to a chosen speaking description. These are performance directions, never extra people or reference assets. The presetId is a menu identifier only: never rename the character to the preset's name. Match the character's name to the brief and preserve their appearance, role, exact words and requested emotion. Never add dialogue, lyrics or vocal events merely because a voice was selected. A character who never vocalizes receives no speaker ID; complete silence makes these choices inactive.
+At each selected character's first vocal appearance, include their EXACT description as prose in the main narrative, OUTSIDE <d> and visible-text quotes. Keep the character name next to the stable ID: Name (S1), or in reference mode <Subject N> (S1), Name. Place the description immediately with this identity, before their spoken words. It may be a separate sentence there; do not shorten or paraphrase it. Then describe the action/delivery and preserve the exact dialogue inside <d>. Reuse the same voice and speaker ID on later vocal events, assigning IDs by actual vocal order, not card order. In reference mode also retain the name/voice with the matching Subject definition; use its existing label, never invent a Subject or Audio asset just for a preset. Never put voice descriptions in retention_analysis or either sound field. If an explicit reference-audio timbre contradicts the selected voice, keep the conflict visible for review rather than silently changing either instruction.` : ''}
 
 SOUND FIELDS
 overall_soundscape: One paragraph of 1–4 English sentences about ambience, physical/non-verbal sounds; no dialogue, lyrics or diegetic music. N/A only for explicitly complete silence. non_diegetic_music: 1–3 sentences of audience-only instruments, tempo/rhythm/dynamics, or N/A for no score. Character-audible music stays in the narrative.
@@ -366,6 +372,9 @@ export function validateOutput(text, raw) {
   }
   const explicitSilence = /\b(?:complete|total|absolute) silence\b|\b(?:completely|entirely|fully) silent\b|\bsilent video\b|\bno audio\b/i.test(input.prompt);
   const silent = input.audio === 'silent' || explicitSilence;
+  const voices = checkCharacterVoices(body, fields.subject_definitions ?? '', input.characterVoices, { silent });
+  errors.push(...voices.errors);
+  warnings.push(...voices.warnings);
   const noMusic = silent || input.music === 'none' || /\b(?:no|without|omit) (?:background |non-diegetic )?(?:music|score)\b/i.test(input.prompt);
   if (silent && fields.overall_soundscape !== 'N/A') errors.push('Complete silence requires overall_soundscape: N/A.');
   if (!silent && fields.overall_soundscape === 'N/A') errors.push('Use overall_soundscape: N/A only when complete silence was explicitly requested.');
